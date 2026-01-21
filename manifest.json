@@ -1,11 +1,11 @@
 {
-  "name": "Cold Calling CRM",
-  "short_name": "CRM",
-  "description": "Track your cold calling leads and conversions",
+  "name": "CallTrack Pro - Cold Calling CRM",
+  "short_name": "CallTrack Pro",
+  "description": "Track your cold calling leads, conversions, and achieve your sales goals",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#6366f1",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -19,6 +19,19 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1366x768",
+      "type": "image/png"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1366x768",
+      "type": "image/png"
     }
   ]
 }
