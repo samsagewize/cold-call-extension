@@ -14,8 +14,24 @@ import {
 } from './icons';
 import type { Lead, LeadStatus } from './types';
 import { loadLeads, saveLeads } from './storage';
+import Popup from './popup';
+
+function isExtensionPopup() {
+  // heuristic: chrome.runtime exists + constrained popup window
+  const isExt = typeof chrome !== 'undefined' && !!chrome.runtime?.id;
+  if (!isExt) return false;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  return w <= 420 && h <= 720;
+}
 
 export default function App() {
+  const [mode] = useState(() => (isExtensionPopup() ? 'popup' : 'app'));
+  
+  if (mode === 'popup') {
+    return <Popup />;
+  }
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);

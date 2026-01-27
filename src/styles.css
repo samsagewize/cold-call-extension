@@ -16,6 +16,14 @@ body {
               linear-gradient(180deg, #F7F8FB 0%, #EEF1F7 70%, #E9ECF4 100%);
 }
 
+/* Popup mode (Chrome extension) */
+body.ctp-popup {
+  background:
+    radial-gradient(700px 420px at 18% 10%, rgba(182,255,77,0.22), transparent 55%),
+    radial-gradient(900px 520px at 95% 30%, rgba(82,168,255,0.18), transparent 60%),
+    linear-gradient(180deg, #070A13 0%, #0B1020 58%, #090D18 100%);
+}
+
 /* subtle grain overlay */
 .grain::before{
   content:"";
