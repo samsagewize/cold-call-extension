@@ -8,6 +8,11 @@ These endpoints are intended for deployment on Vercel.
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only; keep secret)
 - `ADMIN_ISSUE_SECRET`
 
+## Notes
+
+The API routes are implemented as `api/*.js` so Vercel can run them as serverless
+functions without any custom runtime config.
+
 ## Supabase schema
 
 Create a table named `licenses`:

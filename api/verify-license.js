@@ -1,7 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabaseAdmin } from './_supabase';
+const { getSupabaseAdmin } = require('./_supabase');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
@@ -33,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     res.status(200).json({ ok: true, valid: true });
-  } catch (e: any) {
+  } catch (e) {
     res.status(500).json({ ok: false, error: 'server_error', detail: e?.message ?? String(e) });
   }
-}
+};

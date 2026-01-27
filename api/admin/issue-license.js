@@ -1,15 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import crypto from 'node:crypto';
-import { getSupabaseAdmin } from '../_supabase';
+const crypto = require('node:crypto');
+const { getSupabaseAdmin } = require('../_supabase');
 
 function generateKey() {
-  // Looks like: CTP-XXXX-XXXX-XXXX (no ambiguous chars)
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const chunk = () => Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
   return `CTP-${chunk()}-${chunk()}-${chunk()}`;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
@@ -23,7 +21,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // constant-time compare to reduce leak
   const a = Buffer.from(adminSecret);
   const b = Buffer.from(provided);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
@@ -42,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     res.status(200).json({ ok: true, key });
-  } catch (e: any) {
+  } catch (e) {
     res.status(500).json({ ok: false, error: 'server_error', detail: e?.message ?? String(e) });
   }
-}
+};

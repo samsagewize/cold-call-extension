@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
-export function getSupabaseAdmin() {
+function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -10,8 +10,8 @@ export function getSupabaseAdmin() {
 
   return createClient(url, key, {
     auth: { persistSession: false },
-    global: {
-      headers: { 'X-Client-Info': 'calltrack-pro-license-api' }
-    }
+    global: { headers: { 'X-Client-Info': 'calltrack-pro-license-api' } }
   });
 }
+
+module.exports = { getSupabaseAdmin };
