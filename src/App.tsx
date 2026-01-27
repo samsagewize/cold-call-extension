@@ -12,21 +12,8 @@ import {
   Users,
   XCircle
 } from './icons';
-
-type LeadStatus = 'not-called' | 'called' | 'interested' | 'not-interested' | 'converted';
-
-type Lead = {
-  id: number;
-  date: string;
-  businessName: string;
-  contactName: string;
-  phone: string;
-  email?: string;
-  status: LeadStatus;
-  notes?: string;
-};
-
-const STORAGE_KEY = 'crm-leads';
+import type { Lead, LeadStatus } from './types';
+import { loadLeads, saveLeads } from './storage';
 
 export default function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -47,8 +34,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setLeads(JSON.parse(saved));
+    loadLeads().then(setLeads);
 
     const onBeforeInstall = (e: any) => {
       e.preventDefault();
@@ -65,7 +51,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    saveLeads(leads);
   }, [leads]);
 
   const stats = useMemo(() => {

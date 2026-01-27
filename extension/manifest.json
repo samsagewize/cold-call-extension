@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "CallTrack Pro",
+  "short_name": "CallTrack Pro",
+  "description": "A fast cold-calling CRM in your browser — track leads and outcomes in seconds.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "CallTrack Pro",
+    "default_popup": "index.html"
+  },
+  "icons": {
+    "16": "icon-192.png",
+    "48": "icon-192.png",
+    "128": "icon-512.png"
+  },
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
