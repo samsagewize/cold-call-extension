@@ -1,5 +1,5 @@
-const crypto = require('node:crypto');
-const { getSupabaseAdmin } = require('../_supabase');
+import crypto from 'node:crypto';
+import { getSupabaseAdmin } from '../_supabase.js';
 
 function generateKey() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -7,7 +7,7 @@ function generateKey() {
   return `CTP-${chunk()}-${chunk()}-${chunk()}`;
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
@@ -42,4 +42,4 @@ module.exports = async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: 'server_error', detail: e?.message ?? String(e) });
   }
-};
+}
