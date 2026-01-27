@@ -13,8 +13,10 @@ import {
   XCircle
 } from './icons';
 import type { Lead, LeadStatus } from './types';
-import { loadLeads, saveLeads } from './storage';
+import { loadLeads, loadPro, saveLeads, savePro } from './storage';
 import Popup from './popup';
+import { leadsToCsv, downloadCsv } from './csv';
+import { openUpgrade } from './billing';
 
 function isExtensionPopup() {
   // heuristic: chrome.runtime exists + constrained popup window
@@ -33,6 +35,8 @@ export default function App() {
   }
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [isPro, setIsPro] = useState(false);
+  const [showPro, setShowPro] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +55,7 @@ export default function App() {
 
   useEffect(() => {
     loadLeads().then(setLeads);
+    loadPro().then(setIsPro);
 
     const onBeforeInstall = (e: any) => {
       e.preventDefault();
@@ -69,6 +74,10 @@ export default function App() {
   useEffect(() => {
     saveLeads(leads);
   }, [leads]);
+
+  useEffect(() => {
+    savePro(isPro);
+  }, [isPro]);
 
   const stats = useMemo(() => {
     const attempted = leads.filter((l) => l.status !== 'not-called');
@@ -197,6 +206,72 @@ export default function App() {
 
   return (
     <div className="grain min-h-screen p-4 md:p-10">
+      {showPro && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowPro(false)} />
+          <div className="relative max-w-xl mx-auto px-4 pt-14">
+            <div className="rounded-3xl border border-black/10 bg-white/90 backdrop-blur shadow-[0_30px_90px_rgba(7,10,19,0.25)] p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold tracking-[0.16em] uppercase text-ink-800/60">CallTrack Pro</div>
+                  <div className="mt-1 font-display text-2xl leading-tight text-ink-900">Lifetime Pro — $5</div>
+                  <div className="mt-1 text-sm text-ink-800/70">Export CSV + Teams mode (sync coming next).</div>
+                </div>
+                <button
+                  onClick={() => setShowPro(false)}
+                  className="rounded-xl bg-white/70 border border-black/10 px-3 py-2 text-xs font-semibold hover:bg-white transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-black/[0.03] border border-black/10 p-4">
+                  <div className="text-[11px] font-semibold tracking-[0.16em] uppercase text-ink-800/60">CSV Export</div>
+                  <div className="mt-1 text-sm font-semibold text-ink-900">Download your data</div>
+                  <div className="mt-1 text-sm text-ink-800/70">One click. Clean columns.</div>
+                </div>
+                <div className="rounded-2xl bg-black/[0.03] border border-black/10 p-4">
+                  <div className="text-[11px] font-semibold tracking-[0.16em] uppercase text-ink-800/60">Teams</div>
+                  <div className="mt-1 text-sm font-semibold text-ink-900">Multi-user workspace</div>
+                  <div className="mt-1 text-sm text-ink-800/70">Sync is coming next.</div>
+                </div>
+                <div className="rounded-2xl bg-ink-900 text-white p-4 relative overflow-hidden">
+                  <div className="absolute inset-0 opacity-80" style={{ background: 'radial-gradient(700px 220px at 20% 20%, rgba(182,255,77,0.35), transparent 55%), radial-gradient(700px 260px at 90% 40%, rgba(82,168,255,0.25), transparent 60%)' }} />
+                  <div className="relative">
+                    <div className="text-[11px] font-semibold tracking-[0.16em] uppercase text-white/70">Lifetime</div>
+                    <div className="mt-1 text-sm font-semibold">Pay once. Keep forever.</div>
+                    <div className="mt-1 text-sm text-white/70">$5 total.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => openUpgrade()}
+                  className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-4 py-2.5 text-sm font-semibold shadow-[0_16px_40px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
+                >
+                  Purchase ($5)
+                </button>
+                <button
+                  onClick={() => setIsPro(true)}
+                  className="rounded-xl bg-white/70 border border-black/10 text-ink-900 px-4 py-2.5 text-sm font-semibold hover:bg-white transition"
+                  title="Temporary unlock (local). We'll improve this with license verification next."
+                >
+                  I’ve purchased
+                </button>
+              </div>
+
+              {!isPro && (
+                <div className="mt-3 text-xs text-ink-800/60">
+                  For now, Pro unlock is stored on this device. Next step: license verification so it follows your account.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         {showInstallPrompt && (
           <div className="rounded-2xl bg-ink-900 text-white p-4 shadow-card2 mb-6 flex items-center justify-between gap-4">
@@ -341,13 +416,34 @@ export default function App() {
                 <option value="converted">Converted</option>
               </select>
             </div>
-            <button
-              onClick={openAdd}
-              className="group relative overflow-hidden rounded-xl bg-ink-900 text-white px-6 py-2.5 transition flex items-center gap-2 whitespace-nowrap shadow-card hover:shadow-[0_18px_55px_rgba(7,10,19,0.22)]"
-            >
-              <Plus className="w-5 h-5" />
-              Add Lead
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowPro(true)}
+                className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-4 py-2.5 text-sm font-semibold shadow-[0_16px_40px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
+              >
+                {isPro ? 'PRO' : 'Upgrade $5'}
+              </button>
+              <button
+                onClick={() => {
+                  if (!isPro) {
+                    setShowPro(true);
+                    return;
+                  }
+                  const csv = leadsToCsv(leads);
+                  downloadCsv(`calltrack-pro-leads-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+                }}
+                className="rounded-xl bg-white/70 border border-black/10 text-ink-900 px-4 py-2.5 text-sm font-semibold hover:bg-white transition"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={openAdd}
+                className="group relative overflow-hidden rounded-xl bg-ink-900 text-white px-6 py-2.5 transition flex items-center gap-2 whitespace-nowrap shadow-card hover:shadow-[0_18px_55px_rgba(7,10,19,0.22)]"
+              >
+                <Plus className="w-5 h-5" />
+                Add Lead
+              </button>
+            </div>
           </div>
         </div>
 
