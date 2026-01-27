@@ -4,6 +4,7 @@ import { loadLeads, loadPro, saveLeads, savePro } from './storage';
 import { CheckCircle, Phone, Plus, Search, TrendingUp, Users, XCircle } from './icons';
 import { leadsToCsv, downloadCsv } from './csv';
 import { openUpgrade } from './billing';
+import { verifyLicense } from './licenseApi';
 
 const STATUS: Array<{ key: LeadStatus; label: string; icon: React.ReactNode; cls: string }> = [
   { key: 'not-called', label: 'Not called', icon: <Phone className="w-4 h-4" />, cls: 'bg-white/5 text-white/80 border-white/10' },
@@ -22,6 +23,11 @@ export default function Popup() {
   const [q, setQ] = useState('');
   const [isPro, setIsPro] = useState(false);
   const [showPro, setShowPro] = useState(false);
+  const [licenseKey, setLicenseKey] = useState('');
+  useEffect(() => {
+    if (isPro) setShowPro(false);
+  }, [isPro]);
+  const [licenseStatus, setLicenseStatus] = useState<'idle'|'checking'|'valid'|'invalid'|'error'>('idle');
 
   const [businessName, setBusinessName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -137,27 +143,57 @@ export default function Popup() {
                 </ul>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => openUpgrade()}
-                  className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-3 py-2.5 text-sm font-semibold shadow-[0_16px_40px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
-                >
-                  Purchase ($5)
-                </button>
-                <button
-                  onClick={() => setIsPro(true)}
-                  className="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/10 transition"
-                  title="Temporary unlock (local). We'll improve this with license verification next."
-                >
-                  I’ve purchased
-                </button>
-              </div>
-
-              {!isPro && (
-                <div className="mt-3 text-xs text-white/55">
-                  Note: this unlock is currently stored on this device. Next step is license verification so it follows your account.
+              <div className="mt-4 rounded-2xl bg-black/30 border border-white/10 p-3">
+                <div className="text-xs font-semibold text-white/80">Already purchased?</div>
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  <input
+                    value={licenseKey}
+                    onChange={(e) => {
+                      setLicenseKey(e.target.value);
+                      setLicenseStatus('idle');
+                    }}
+                    placeholder="Enter license key (CTP-XXXX-XXXX-XXXX)"
+                    className="w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2.5 text-sm placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-[#B6FF4D]/35"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => openUpgrade()}
+                      className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-3 py-2.5 text-sm font-semibold shadow-[0_16px_40px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
+                    >
+                      Purchase ($5)
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setLicenseStatus('checking');
+                        try {
+                          const ok = await verifyLicense(licenseKey.trim());
+                          if (ok) {
+                            setIsPro(true);
+                            setLicenseStatus('valid');
+                          } else {
+                            setLicenseStatus('invalid');
+                          }
+                        } catch {
+                          setLicenseStatus('error');
+                        }
+                      }}
+                      className="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/10 transition disabled:opacity-50"
+                      disabled={!licenseKey.trim() || licenseStatus === 'checking'}
+                    >
+                      {licenseStatus === 'checking' ? 'Verifying…' : 'Verify key'}
+                    </button>
+                  </div>
+                  {licenseStatus === 'valid' && (
+                    <div className="text-xs text-[#B6FF4D]">Verified. Pro unlocked.</div>
+                  )}
+                  {licenseStatus === 'invalid' && (
+                    <div className="text-xs text-rose-200">Invalid key.</div>
+                  )}
+                  {licenseStatus === 'error' && (
+                    <div className="text-xs text-amber-200">Couldn’t verify right now (API not configured yet).</div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
