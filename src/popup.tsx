@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Lead, LeadStatus } from './types';
-import { loadLeads, saveLeads } from './storage';
+import { loadLeads, loadPro, saveLeads, savePro } from './storage';
 import { CheckCircle, Phone, Plus, Search, TrendingUp, Users, XCircle } from './icons';
+import { leadsToCsv, downloadCsv } from './csv';
+import { openUpgrade } from './billing';
+import { verifyLicense } from './licenseApi';
 
 const STATUS: Array<{ key: LeadStatus; label: string; icon: React.ReactNode; cls: string }> = [
   { key: 'not-called', label: 'Not called', icon: <Phone className="w-4 h-4" />, cls: 'bg-white/5 text-white/80 border-white/10' },
@@ -18,6 +21,13 @@ function canUseChromeTabs(): boolean {
 export default function Popup() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [q, setQ] = useState('');
+  const [isPro, setIsPro] = useState(false);
+  const [showPro, setShowPro] = useState(false);
+  const [licenseKey, setLicenseKey] = useState('');
+  useEffect(() => {
+    if (isPro) setShowPro(false);
+  }, [isPro]);
+  const [licenseStatus, setLicenseStatus] = useState<'idle'|'checking'|'valid'|'invalid'|'error'>('idle');
 
   const [businessName, setBusinessName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -29,6 +39,7 @@ export default function Popup() {
   useEffect(() => {
     document.body.classList.add('ctp-popup');
     loadLeads().then(setLeads);
+    loadPro().then(setIsPro);
     // focus first field
     setTimeout(() => businessRef.current?.focus(), 50);
     return () => document.body.classList.remove('ctp-popup');
@@ -37,6 +48,10 @@ export default function Popup() {
   useEffect(() => {
     saveLeads(leads);
   }, [leads]);
+
+  useEffect(() => {
+    savePro(isPro);
+  }, [isPro]);
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -78,6 +93,15 @@ export default function Popup() {
     reset();
   };
 
+  const exportCsv = () => {
+    if (!isPro) {
+      setShowPro(true);
+      return;
+    }
+    const csv = leadsToCsv(leads);
+    downloadCsv(`calltrack-pro-leads-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  };
+
   const openDashboard = () => {
     // open a full tab view (same build output)
     if (canUseChromeTabs()) {
@@ -88,7 +112,93 @@ export default function Popup() {
   };
 
   return (
-    <div className="w-[380px] max-w-[100vw] text-white">
+    <div className="w-[380px] max-w-[100vw] text-white relative">
+      {showPro && (
+        <div className="absolute inset-0 z-50">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPro(false)} />
+          <div className="relative p-4">
+            <div className="rounded-3xl border border-white/10 bg-[#0B1020]/95 shadow-[0_30px_90px_rgba(0,0,0,0.55)] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold tracking-[0.16em] uppercase text-white/60">CallTrack Pro</div>
+                  <div className="mt-1 font-display text-2xl leading-tight">Lifetime Pro — $5</div>
+                  <div className="mt-1 text-sm text-white/70">
+                    Unlock CSV export + Teams mode (sync coming next).
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPro(false)}
+                  className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3">
+                <div className="text-xs font-semibold text-white/80">What you get</div>
+                <ul className="mt-2 text-sm text-white/70 space-y-1">
+                  <li>• Export leads to CSV (Pro)</li>
+                  <li>• Teams workspace (Pro — sync coming next)</li>
+                  <li>• Pro badge + premium UI</li>
+                </ul>
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-black/30 border border-white/10 p-3">
+                <div className="text-xs font-semibold text-white/80">Already purchased?</div>
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  <input
+                    value={licenseKey}
+                    onChange={(e) => {
+                      setLicenseKey(e.target.value);
+                      setLicenseStatus('idle');
+                    }}
+                    placeholder="Enter license key (CTP-XXXX-XXXX-XXXX)"
+                    className="w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2.5 text-sm placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-[#B6FF4D]/35"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => openUpgrade()}
+                      className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-3 py-2.5 text-sm font-semibold shadow-[0_16px_40px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
+                    >
+                      Purchase ($5)
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setLicenseStatus('checking');
+                        try {
+                          const ok = await verifyLicense(licenseKey.trim());
+                          if (ok) {
+                            setIsPro(true);
+                            setLicenseStatus('valid');
+                          } else {
+                            setLicenseStatus('invalid');
+                          }
+                        } catch {
+                          setLicenseStatus('error');
+                        }
+                      }}
+                      className="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/10 transition disabled:opacity-50"
+                      disabled={!licenseKey.trim() || licenseStatus === 'checking'}
+                    >
+                      {licenseStatus === 'checking' ? 'Verifying…' : 'Verify key'}
+                    </button>
+                  </div>
+                  {licenseStatus === 'valid' && (
+                    <div className="text-xs text-[#B6FF4D]">Verified. Pro unlocked.</div>
+                  )}
+                  {licenseStatus === 'invalid' && (
+                    <div className="text-xs text-rose-200">Invalid key.</div>
+                  )}
+                  {licenseStatus === 'error' && (
+                    <div className="text-xs text-amber-200">Couldn’t verify right now (API not configured yet).</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-start justify-between">
           <div>
@@ -101,12 +211,21 @@ export default function Popup() {
             </div>
             <div className="mt-1 text-sm text-white/70">Add a lead in seconds. No fluff.</div>
           </div>
-          <button
-            onClick={openDashboard}
-            className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 transition"
-          >
-            Open Dashboard
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPro(true)}
+              className="rounded-xl bg-[#B6FF4D] text-[#070A13] px-3 py-2 text-xs font-semibold shadow-[0_12px_28px_rgba(182,255,77,0.18)] hover:shadow-[0_18px_55px_rgba(182,255,77,0.22)] transition"
+              title="Unlock Pro"
+            >
+              {isPro ? 'PRO' : 'Upgrade $5'}
+            </button>
+            <button
+              onClick={openDashboard}
+              className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 transition"
+            >
+              Dashboard
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
@@ -180,6 +299,21 @@ export default function Popup() {
               <Plus className="w-5 h-5" />
               Add lead
             </button>
+
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                onClick={exportCsv}
+                className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 transition"
+              >
+                Export CSV {isPro ? '' : '• Pro'}
+              </button>
+              <button
+                onClick={() => setShowPro(true)}
+                className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 transition"
+              >
+                Teams {isPro ? '' : '• Pro'}
+              </button>
+            </div>
           </div>
         </div>
 

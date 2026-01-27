@@ -4,3 +4,4 @@ dist
 dist-ext
 .DS_Store
 .vercel
+.env*.local
